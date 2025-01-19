@@ -5,11 +5,6 @@ import (
 	"strings"
 )
 
-type wordCounter struct {
-	word  string
-	count uint
-}
-
 func Top10(str string) []string {
 	// Пустой текст, включая пробелы
 	if strings.TrimSpace(str) == "" {
@@ -19,48 +14,35 @@ func Top10(str string) []string {
 	// Разбивка текста на слова и подсчет частоты встречи каждого слова
 	counter := make(map[string]uint)
 	for _, s := range strings.Fields(str) {
-		// Проверка ключа
-		_, exist := counter[s]
-		if !exist {
-			counter[s] = 0
-		}
-
-		// Слово уже есть в мапе
 		counter[s]++
 	}
 
-	// Переложим полученную мапу в слайс структур wordCounter, чтобы в дальнейшем можно было отсортировать
-	wordCounterList := make([]wordCounter, 0, len(counter))
-	for key, value := range counter {
-		wordCounterList = append(wordCounterList, wordCounter{key, value})
+	// Переложим значения из мапы в слайс строк, чтобы в дальнейшем можно было отсортировать
+	wordList := make([]string, 0, len(counter))
+	for key := range counter {
+		wordList = append(wordList, key)
 	}
 
 	// Сортировка
-	sort.Slice(wordCounterList, func(ii, jj int) bool {
-		// Слово ii встречается чаще слова jj
-		if wordCounterList[ii].count > wordCounterList[jj].count {
-			return true
-		}
-
+	sort.Slice(wordList, func(ii, jj int) bool {
 		// При равенстве частоты слов, сортируется лексикографически
-		if wordCounterList[ii].count == wordCounterList[jj].count && wordCounterList[ii].word < wordCounterList[jj].word {
-			return true
+		if counter[wordList[ii]] == counter[wordList[jj]] {
+			return wordList[ii] < wordList[jj]
 		}
 
-		// Для остальных случаев false
-		return false
+		return counter[wordList[ii]] > counter[wordList[jj]]
 	})
 
 	// Итоговый слайс
 	recCount := 10
-	if len(wordCounterList) < 10 {
-		recCount = len(wordCounterList)
+	if len(wordList) < 10 {
+		recCount = len(wordList)
 	}
 
 	result := make([]string, 0, recCount)
 
 	for ii := 0; ii < recCount; ii++ {
-		result = append(result, wordCounterList[ii].word)
+		result = append(result, wordList[ii])
 	}
 
 	return result
