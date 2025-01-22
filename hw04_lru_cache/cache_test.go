@@ -50,13 +50,67 @@ func TestCache(t *testing.T) {
 	})
 
 	t.Run("purge logic", func(t *testing.T) {
-		// Write me
+		cache := NewCache(3)
+
+		// Вытеснение
+		cache.Set("aaa", 100)
+		cache.Set("bbb", 200)
+		cache.Set("ccc", 300)
+		cache.Set("ddd", 400)
+
+		// Этот элемент должен был вытеснен из кэша
+		val, ok := cache.Get("aaa")
+		require.False(t, ok)
+		require.Nil(t, val)
+
+		// А эти должны остаться
+		val, ok = cache.Get("bbb")
+		require.True(t, ok)
+		require.Equal(t, 200, val)
+		val, ok = cache.Get("ccc")
+		require.True(t, ok)
+		require.Equal(t, 300, val)
+		val, ok = cache.Get("ddd")
+		require.True(t, ok)
+		require.Equal(t, 400, val)
+
+		// Очистка кэша
+		cache.Clear()
+		val, ok = cache.Get("ddd")
+		require.False(t, ok)
+		require.Nil(t, val)
+
+		// Вытеснение редко используемого элемента
+		cache.Set("aaa", 100)
+		cache.Set("bbb", 200)
+		cache.Set("ccc", 300)
+
+		cache.Get("aaa")
+		cache.Set("aaa", 400)
+		cache.Get("aaa")
+
+		cache.Set("bbb", 400)
+		cache.Get("bbb")
+		cache.Get("bbb")
+
+		cache.Set("ddd", 400)
+		// "ccc" редко используемый ключ элемента, он должен быть вытеснен
+		val, ok = cache.Get("ccc")
+		require.False(t, ok)
+		require.Nil(t, val)
+		val, ok = cache.Get("aaa")
+		require.True(t, ok)
+		require.Equal(t, 400, val)
+		val, ok = cache.Get("bbb")
+		require.True(t, ok)
+		require.Equal(t, 400, val)
+		val, ok = cache.Get("ddd")
+		require.True(t, ok)
+		require.Equal(t, 400, val)
 	})
 }
 
 func TestCacheMultithreading(t *testing.T) {
-	t.Skip() // Remove me if task with asterisk completed.
-
 	c := NewCache(10)
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
@@ -76,4 +130,9 @@ func TestCacheMultithreading(t *testing.T) {
 	}()
 
 	wg.Wait()
+
+	c.Clear()
+	val, ok := c.Get("999999")
+	require.False(t, ok)
+	require.Nil(t, val)
 }
