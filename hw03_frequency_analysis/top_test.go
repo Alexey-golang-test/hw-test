@@ -79,4 +79,29 @@ func TestTop10(t *testing.T) {
 			require.Equal(t, expected, Top10(text))
 		}
 	})
+
+	t.Run("only whitespaces in string", func(t *testing.T) {
+		require.Len(t, Top10("    "), 0)
+	})
+
+	t.Run("less then 10 words in string", func(t *testing.T) {
+		expected := []string{
+			"in",     // 2
+			"string", // 2
+			"10",     // 1
+			"less",   // 1
+			"then",   // 1
+			"words",  // 1
+		}
+		require.Equal(t, expected, Top10("less then 10 words in string in string"))
+	})
+
+	t.Run("unicode symbol", func(t *testing.T) {
+		expected := []string{
+			"界3", // 3
+			"界2", // 2
+			"界1", // 1
+		}
+		require.Equal(t, expected, Top10("界1 界2 界3 界2 界3 界3    "))
+	})
 }
