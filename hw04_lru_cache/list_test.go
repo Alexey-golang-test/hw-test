@@ -48,4 +48,92 @@ func TestList(t *testing.T) {
 		}
 		require.Equal(t, []int{70, 80, 60, 40, 10, 30, 50}, elems)
 	})
+
+	t.Run("one item", func(tt *testing.T) {
+		ll := NewList()
+
+		// Добавление единственного элемента
+		ll.PushBack(100)
+		require.Equal(tt, 1, ll.Len())
+		require.Equal(tt, 100, ll.Front().Value)
+		require.Nil(tt, ll.Front().Next)
+		require.Nil(tt, ll.Front().Prev)
+
+		// Перемещение единственного элемента в начало списка (по факту ничего не должно измениться)
+		ll.MoveToFront(ll.Front())
+		require.Equal(tt, 1, ll.Len())
+		require.Equal(tt, 100, ll.Front().Value)
+		require.Nil(tt, ll.Front().Next)
+		require.Nil(tt, ll.Front().Prev)
+
+		// Удаление единственного элемента, список должен быть пустым
+		ll.Remove(ll.Back())
+		require.Equal(tt, 0, ll.Len())
+		require.Nil(tt, ll.Front())
+		require.Nil(tt, ll.Front())
+	})
+
+	t.Run("two item remove", func(tt *testing.T) {
+		ll := NewList()
+
+		// В списке два элемента, удаления первого элемента
+		ll.PushBack(100)
+		ll.PushBack(200)
+		ll.Remove(ll.Front())
+		require.Equal(tt, 1, ll.Len())
+		require.Nil(tt, ll.Front().Next)
+		require.Nil(tt, ll.Front().Prev)
+		require.Equal(tt, ll.Front(), ll.Back())
+		require.Equal(tt, 200, ll.Front().Value)
+
+		// В списке два элемента, удаления последнего элемента
+		ll.PushFront(100)
+		ll.Remove(ll.Back())
+		require.Equal(tt, 1, ll.Len())
+		require.Nil(tt, ll.Front().Next)
+		require.Nil(tt, ll.Front().Prev)
+		require.Equal(tt, ll.Front(), ll.Back())
+		require.Equal(tt, 100, ll.Front().Value)
+	})
+
+	t.Run("three item remove", func(tt *testing.T) {
+		ll := NewList()
+
+		// В списке три элемента, удаление первого элемента
+		ll.PushBack(100)
+		ll.PushBack(200)
+		ll.PushBack(300)
+		ll.Remove(ll.Front())
+		require.Equal(tt, 2, ll.Len())
+		require.Nil(tt, ll.Front().Prev)
+		require.Nil(tt, ll.Back().Next)
+		require.Equal(tt, ll.Front().Next, ll.Back())
+		require.Equal(tt, ll.Back().Prev, ll.Front())
+		require.Equal(tt, 200, ll.Front().Value)
+		require.Equal(tt, 300, ll.Back().Value)
+
+		// В списке три элемента, удаление центрального элемента
+		ll.PushFront(100)
+		ll.Remove(ll.Front().Next)
+		require.Equal(tt, 2, ll.Len())
+		require.Nil(tt, ll.Front().Prev)
+		require.Nil(tt, ll.Back().Next)
+		require.Equal(tt, ll.Front().Next, ll.Back())
+		require.Equal(tt, ll.Back().Prev, ll.Front())
+		require.Equal(tt, 100, ll.Front().Value)
+		require.Equal(tt, 300, ll.Back().Value)
+
+		// В списке три элемента, удаление последнего элемента
+		ll.Remove(ll.Back())
+		ll.PushBack(200)
+		ll.PushBack(300)
+		ll.Remove(ll.Back())
+		require.Equal(tt, 2, ll.Len())
+		require.Nil(tt, ll.Front().Prev)
+		require.Nil(tt, ll.Back().Next)
+		require.Equal(tt, ll.Front().Next, ll.Back())
+		require.Equal(tt, ll.Back().Prev, ll.Front())
+		require.Equal(tt, 100, ll.Front().Value)
+		require.Equal(tt, 200, ll.Back().Value)
+	})
 }
