@@ -8,36 +8,73 @@ type (
 
 type Stage func(in In) (out Out)
 
-func ExecutePipeline(in In, done In, stages ...Stage) Out {
-	// Эта функция слушает два канала. Служит как переходник для Stage
-	// С одной стороны надо переложить In в Out
-	// С другой стороны надо прерывать работу через done-канал
-	stageFunc := func(done In, in In) Out {
-		resChan := make(Bi)
+func chanFunc(in In, doneAll In) Out {
+	newIn := make(Bi, 10)
 
-		go func() {
-			defer close(resChan)
-
-			for ii := range in {
-				select {
-				case <-done:
+	go func() {
+		for {
+			select {
+			case <-doneAll:
+				close(newIn)
+				go func() {
+					// Пропускаем сообщения
+					for range in {
+						_ = newIn
+					}
+				}()
+				go func() {
+					// Пропускаем сообщения
+					for range newIn {
+						_ = newIn
+					}
+				}()
+				return
+			case value, exist := <-in:
+				if !exist {
+					close(newIn)
 					return
-				case resChan <- ii:
 				}
+				newIn <- value
 			}
-		}()
+		}
+	}()
+	return newIn
+}
 
-		return resChan
-	}
+func ExecutePipeline(in In, done In, stages ...Stage) Out {
+	// Горутина (+ канал) для защиты от подачи в done канал данных, а не его закрытия
+	// Например сообщение "stop"
+	// Если бы в описании задачи/контракте был бы жестко прописан способ работы done-канала,
+	// то этот блок можно было удалить и работать через входящий канал done
+	doneAll := make(Bi)
+	go func() {
+		defer close(doneAll)
+		<-done
+	}()
 
 	// Последовательный запуск стадий пайплайна.
 	for _, ss := range stages {
-		// in переопределяется, это не ошибка.
-		// На каждой итерации цикла исходящий канал функции сохраняется в переменную,
-		// и уже на следующей итерации является входящим каналом в функцию
-		// Это аналог рекурсивного вызова ss(stageFunc(done, ss(stageFunc(done, ss(stageFunc(done, ... и т.д.))))))
-		in = ss(stageFunc(done, in))
+		// Встраиваемся и перекладываем сообщения в in-канале, чтобы можно было встроить логику работы done-канала
+		// in переначитывается, это не ошибка.
+		in = ss(chanFunc(in, doneAll))
 	}
 
-	return in
+	resChan := make(Bi, 10)
+
+	// Наличие этого блока кода - скорее защита, т.к. тесты требуют, чтобы в случае работы done-канала
+	// результатов не было вообще. Чаще всего, если объект прошел по всем стадиям, то этот результат имеет ценность.
+	for {
+		select {
+		case <-doneAll:
+			emptyChan := make(Bi)
+			close(emptyChan)
+			return emptyChan
+		case value, exist := <-in:
+			if !exist {
+				close(resChan)
+				return resChan
+			}
+			resChan <- value
+		}
+	}
 }
