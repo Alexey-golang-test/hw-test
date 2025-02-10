@@ -8,37 +8,27 @@ type (
 
 type Stage func(in In) (out Out)
 
-func chanFunc(in In, doneAll In) Out {
-	newIn := make(Bi, 10)
+func chanDataTransit(in In, out Bi, done In) {
+	defer close(out)
+
+	for ii := range in {
+		select {
+		case <-done:
+			return
+		case out <- ii:
+		}
+	}
+}
+
+func stageRun(in In, done In, stage Stage) Bi {
+	outChan := make(Bi)
 
 	go func() {
-		for {
-			select {
-			case <-doneAll:
-				close(newIn)
-				go func() {
-					// Пропускаем сообщения
-					for range in {
-						_ = newIn
-					}
-				}()
-				go func() {
-					// Пропускаем сообщения
-					for range newIn {
-						_ = newIn
-					}
-				}()
-				return
-			case value, exist := <-in:
-				if !exist {
-					close(newIn)
-					return
-				}
-				newIn <- value
-			}
-		}
+		stageOut := stage(in)
+		chanDataTransit(stageOut, outChan, done)
 	}()
-	return newIn
+
+	return outChan
 }
 
 func ExecutePipeline(in In, done In, stages ...Stage) Out {
@@ -52,29 +42,14 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 		<-done
 	}()
 
+	// Промежуточный канал
+	out := make(Bi)
+	go chanDataTransit(in, out, doneAll)
+
 	// Последовательный запуск стадий пайплайна.
 	for _, ss := range stages {
-		// Встраиваемся и перекладываем сообщения в in-канале, чтобы можно было встроить логику работы done-канала
-		// in переначитывается, это не ошибка.
-		in = ss(chanFunc(in, doneAll))
+		out = stageRun(out, doneAll, ss)
 	}
 
-	resChan := make(Bi, 10)
-
-	// Наличие этого блока кода - скорее защита, т.к. тесты требуют, чтобы в случае работы done-канала
-	// результатов не было вообще. Чаще всего, если объект прошел по всем стадиям, то этот результат имеет ценность.
-	for {
-		select {
-		case <-doneAll:
-			emptyChan := make(Bi)
-			close(emptyChan)
-			return emptyChan
-		case value, exist := <-in:
-			if !exist {
-				close(resChan)
-				return resChan
-			}
-			resChan <- value
-		}
-	}
+	return out
 }
