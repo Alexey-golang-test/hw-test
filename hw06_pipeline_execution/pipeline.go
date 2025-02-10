@@ -15,11 +15,11 @@ func chanDataTransit(in In, out Bi, done In) {
 			close(out)
 
 			// Сброс данных из канала
-			for range in {
-				_ = in
-			}
 			for range out {
 				_ = out
+			}
+			for range in {
+				_ = in
 			}
 			return
 
