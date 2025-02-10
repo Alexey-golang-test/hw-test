@@ -13,19 +13,16 @@ func chanDataTransit(in In, out Bi, done In) {
 		select {
 		case <-done:
 			close(out)
-			go func() {
-				// Сброс данных из канала
-				for range in {
-					_ = in
-				}
-			}()
-			go func() {
-				// Сброс данных из канала
-				for range out {
-					_ = out
-				}
-			}()
+
+			// Сброс данных из канала
+			for range in {
+				_ = in
+			}
+			for range out {
+				_ = out
+			}
 			return
+
 		case value, exist := <-in:
 			if !exist {
 				close(out)
