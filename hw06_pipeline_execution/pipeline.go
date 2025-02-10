@@ -9,13 +9,29 @@ type (
 type Stage func(in In) (out Out)
 
 func chanDataTransit(in In, out Bi, done In) {
-	defer close(out)
-
-	for ii := range in {
+	for {
 		select {
 		case <-done:
+			close(out)
+			go func() {
+				// Сброс данных из канала
+				for range in {
+					_ = in
+				}
+			}()
+			go func() {
+				// Сброс данных из канала
+				for range out {
+					_ = out
+				}
+			}()
 			return
-		case out <- ii:
+		case value, exist := <-in:
+			if !exist {
+				close(out)
+				return
+			}
+			out <- value
 		}
 	}
 }
